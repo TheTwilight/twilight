@@ -147,10 +147,10 @@ source ./conf/dconfs.cfg
 if test -e "./prev"; then
 	source ./prev
 	($PREVUSR >&2 ) 2>> /dev/null
-	if ! grep "PREVUSR=*" ./prev ; then
+	if ! grep -q "PREVUSR=*" ./prev ; then
 		echo "PREVUSR=" >> ./prev
 	fi
-	if ! grep "PREVIDX=*" ./prev ; then
+	if ! grep -q "PREVIDX=*" ./prev ; then
 		echo "PREVIDX=" >> ./prev
 	fi
 else
@@ -317,7 +317,8 @@ case $OPTION in
 			if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
 				sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
 				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
-				PREVIDX=$IDX
+				( PREVIDX=$IDX ) 2>> /dev/null
+				IU=1
 			fi
 		fi
 		if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
@@ -392,7 +393,8 @@ if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
 	if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
 		sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
 		sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
-		PREVIDX=$IDX
+		( PREVIDX=$IDX ) 2>> /dev/null
+		IU=1
 	fi
 fi
 if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
