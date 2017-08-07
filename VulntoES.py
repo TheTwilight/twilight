@@ -106,7 +106,7 @@ class NmapES:
 					if ' ' in datas.text:
 						splitstr = datas.text.split(' ')
 						for idx, item in enumerate(splitstr):
-							extendarray = self.extend_stuff('local_ip_private_'+str(idx),item,"ip")
+							extendarray = self.extend_stuff('local_ip_private_'+str(idx+1),item,"ip")
 							mapping.update(extendarray[0])
 							doc.update(extendarray[1])
 					else:
@@ -114,9 +114,16 @@ class NmapES:
 						mapping.update(extendarray[0])
 						doc.update(extendarray[1])
 				elif datas.tag == 'publicipaddress':
-					extendarray = self.extend_stuff('local_ip_public',datas.text,"ip")
-					mapping.update(extendarray[0])
-					doc.update(extendarray[1])
+					if ' ' in datas.text:
+						splitstr = datas.text.split(' ')
+						for idx, item in enumerate(splitstr):
+							extendarray = self.extend_stuff('local_ip_public'+str(idx+1),item,"ip")
+							mapping.update(extendarray[0])
+							doc.update(extendarray[1])
+					else:
+						extendarray = self.extend_stuff('local_ip_public',datas.text,"ip")
+						mapping.update(extendarray[0])
+						doc.update(extendarray[1])
 				elif datas.tag == 'hwaddress':
 					extendarray = self.extend_stuff('local_hwaddress',datas.text,"keyword")
 					mapping.update(extendarray[0])
