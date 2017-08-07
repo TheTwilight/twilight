@@ -335,13 +335,15 @@ case $OPTION in
 			PARAMS=$(whiptail --title "Edit" --inputbox "Editing: \n $PARAMS" 10 80 " $PARAMS" 3>&1 1>&2 2>&3)
 			nmap $PARAMS -oX ./log.xml $URL
 		fi
-
 		exit
             ;;
+	*)
+		echo "You closed the script."; exit
+	    ;;
 esac
 
-#Inputbox for the target URL, IP
 if [ -n "$OPTION" ]; then
+	#Inputbox for the target URL, IP
 	CONF_URL=$(whiptail --title "URL / IP Address" --inputbox "Enter the URl or IP address of the target." 10 80 "$CONF_URL" 3>&1 1>&2 2>&3)
 	exitstatus=$?
 	if [ $exitstatus != 0 ]; then
@@ -356,53 +358,53 @@ if [ -n "$OPTION" ]; then
 	fi
 	done
 
-#Inputbox for the Elasticsearch server URL, IP
-while test -z "$ES_IP"; do
-	ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Please enter the IP address of the Elasticsearch server." 10 80 127.0.0.1 3>&1 1>&2 2>&3)
-	if [ $exitstatus != 0 ]; then
-		echo "You closed the script."; exit
-	fi
-done
+	#Inputbox for the Elasticsearch server URL, IP
+	while test -z "$ES_IP"; do
+		ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Please enter the IP address of the Elasticsearch server." 10 80 127.0.0.1 3>&1 1>&2 2>&3)
+		if [ $exitstatus != 0 ]; then
+			echo "You closed the script."; exit
+		fi
+	done
 
-#User login data & index (if not provided at the beggining)
-while test -z "$USR"; do
-	USR=$(whiptail --title "Username - Elasticsearch" --inputbox "Enter your username for Elasticsearch." 10 80 $PREVUSR 3>&1 1>&2 2>&3)
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then
-		echo "You closed the script."; exit
-	fi
-done
-while test -z "$PSW"; do
-	PSW=$(whiptail --title "Password - Elasticsearch" --passwordbox "Enter your password for Elasticsearch." 10 80 3>&1 1>&2 2>&3)
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then
-		echo "You closed the script."; exit
-	fi	
-done
-if [ -z "$IDX" ]; then
-	while test -z "$IDX"; do
-		IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
+	#User login data & index (if not provided at the beggining)
+	while test -z "$USR"; do
+		USR=$(whiptail --title "Username - Elasticsearch" --inputbox "Enter your username for Elasticsearch." 10 80 $PREVUSR 3>&1 1>&2 2>&3)
 		exitstatus=$?
 		if [ $exitstatus != 0 ]; then
 			echo "You closed the script."; exit
 		fi
 	done
-fi 
+	while test -z "$PSW"; do
+		PSW=$(whiptail --title "Password - Elasticsearch" --passwordbox "Enter your password for Elasticsearch." 10 80 3>&1 1>&2 2>&3)
+		exitstatus=$?
+		if [ $exitstatus != 0 ]; then
+			echo "You closed the script."; exit
+		fi	
+	done
+	if [ -z "$IDX" ]; then
+		while test -z "$IDX"; do
+			IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
+		done
+	fi 
 
-#Save username & index
-if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
-	if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
-		sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
-		sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
-		( PREVIDX=$IDX ) 2>> /dev/null
-		IU=1
+	#Save username & index
+	if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
+		if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
+			sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
+			sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+			( PREVIDX=$IDX ) 2>> /dev/null
+			IU=1
+		fi
 	fi
-fi
-if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
-	if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
-		sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+	if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
+		if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
+			sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+		fi
 	fi
-fi
 
 	#Summary of the parameters and target URL/IP, option to edit them
 	if (whiptail --title "Start scanning / Edit" --yes-button "Scan" --no-button "Edit"  --yesno "Start scanning or edit parameters? \n Parameters: $CONF_PARAM $CONF_URL" 10 80) then
