@@ -133,6 +133,7 @@ netstat -a >> ./hwinfo.txt
 #  -*- coding: utf-8 -*-
 #
 #  Copyright 2017 Máté Varga
+#Let's see those changes.
 #
 
 
