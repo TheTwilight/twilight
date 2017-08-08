@@ -98,11 +98,7 @@ class NmapES:
 					doc.update(extendarray[1])
 		for mesi in self.root.iter('local'):
 			for datas in mesi:
-				if datas.tag == 'user':
-					extendarray = self.extend_stuff('local_user',datas.text,"keyword")
-					mapping.update(extendarray[0])
-					doc.update(extendarray[1])
-				elif datas.tag == 'ipaddress':
+				if datas.tag == 'ipaddress':
 					if ' ' in datas.text:
 						splitstr = datas.text.split(' ')
 						for idx, item in enumerate(splitstr):
@@ -124,24 +120,8 @@ class NmapES:
 						extendarray = self.extend_stuff('local_ip_public',datas.text,"ip")
 						mapping.update(extendarray[0])
 						doc.update(extendarray[1])
-				elif datas.tag == 'hwaddress':
-					extendarray = self.extend_stuff('local_hwaddress',datas.text,"keyword")
-					mapping.update(extendarray[0])
-					doc.update(extendarray[1])
-				elif datas.tag == 'operatingsystem':
-					extendarray = self.extend_stuff('local_os',datas.text,"keyword")
-					mapping.update(extendarray[0])
-					doc.update(extendarray[1])
-				elif datas.tag == 'processor':
-					extendarray = self.extend_stuff('local_processor',datas.text,"keyword")
-					mapping.update(extendarray[0])
-					doc.update(extendarray[1])
-				elif datas.tag == 'kernelrelease':
-					extendarray = self.extend_stuff('local_kernelrelease',datas.text,"keyword")
-					mapping.update(extendarray[0])
-					doc.update(extendarray[1])
-				elif datas.tag == 'kernelversion':
-					extendarray = self.extend_stuff('local_kernelversion',datas.text,"keyword")
+				elif (datas.tag != 'time') & (datas.tag != 'date'):
+					extendarray = self.extend_stuff('local_'+datas.tag,datas.text,"keyword")
 					mapping.update(extendarray[0])
 					doc.update(extendarray[1])
 		permanent_doc = copy.deepcopy(doc)
