@@ -175,10 +175,6 @@ class NmapES:
 							extendarray = self.extend_stuff('hostname',names.attrib['name'],"keyword")
 							mapping.update(extendarray[0])
 							doc.update(extendarray[1])
-				elif c.tag == 'mesi':
-					if c.attrib['titkosnev']:
-						#dict_item['secretstuff'] = c.attrib['titkosnev']
-						print("Bent hagytad a Mesi-taget")
 				elif c.tag == 'ports':
 					for port in c.getchildren():
 						portstate = "closed"
