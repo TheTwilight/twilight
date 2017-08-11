@@ -154,9 +154,13 @@ if test -e "./prev"; then
 	if ! grep -q "PREVIDX=*" ./prev ; then
 		echo "PREVIDX=" >> ./prev
 	fi
+	if ! grep -q "PREVES_IP=*" ./prev ; then
+		echo "PREVES_IP=" >> ./prev
+	fi
 else
 	echo "PREVUSR=" > ./prev
 	echo "PREVIDX=" >> ./prev
+	echo "PREVES_IP=" >> ./prev
 fi
 
 #Main menu
@@ -294,9 +298,13 @@ case $OPTION in
 		PARAMS="$TIMING $PORTS1 $PORTS2 $PROB $SCTYP"
 		PARAMS=$(echo $PARAMS | sed 's/"//g')
 
-		#Inputbox for the Elasticsearch server URL, IP
+		#Inputbox for the Elasticsearch server URL, IP; storing for next use
 		while test -z "$ES_IP"; do
-			ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Enter the IP address of the Elasticsearch server." 10 80 127.0.0.1 3>&1 1>&2 2>&3)
+			ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
+			sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
 		done
 
 		#User login data
@@ -360,7 +368,8 @@ if [ -n "$OPTION" ]; then
 
 	#Inputbox for the Elasticsearch server URL, IP
 	while test -z "$ES_IP"; do
-		ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Please enter the IP address of the Elasticsearch server." 10 80 127.0.0.1 3>&1 1>&2 2>&3)
+		ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Please enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
+		sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
 		if [ $exitstatus != 0 ]; then
 			echo "You closed the script."; exit
 		fi
