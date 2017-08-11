@@ -164,7 +164,7 @@ OPTION=$(whiptail --title "Main Menu" --menu "Choose your option" 15 80 5 \
 "1" "Default Config 1: $DCONF_PARAM1" \
 "2" "Default Config 2: $DCONF_PARAM2" \
 "3" "Default Config 3: $DCONF_PARAM3" \
-"4" "Custum Configuration File" \
+"4" "Custom Configuration File" \
 "5" "Custom Options" 3>&1 1>&2 2>&3)
 
 #Menu points
@@ -243,7 +243,7 @@ case $OPTION in
 		if [ -n "$PORTS2" ]; then			
 			while test -z "$PX"; do
 			HELP1=$(echo $PORTS2 | sed 's/--top-ports //g' | sed 's/-p//g')
-			PX=$(whiptail --title "Port(s) - (3.1/7)" --inputbox "Write the port(s) what you want to use. $HELP1" 10 80 3>&1 1>&2 2>&3)
+			PX=$(whiptail --title "Port(s) - (3.1/7)" --inputbox "Write the port(s) what you want to scan. $HELP1" 10 80 3>&1 1>&2 2>&3)
 			exitstatus=$?
 				if [ $exitstatus != 0 ]; then
 					echo "You closed the script."; exit
@@ -255,7 +255,7 @@ case $OPTION in
 		
 		#Probing options
 		PROB=$(whiptail --title "Probing Options - (4/7)" --checklist \
-			"Choose the probing ptions" 15 80 6 \
+			"Choose the probing options" 15 80 6 \
 			" -Pn" "Don't probe (assume all hosts are up)" OFF \
 			" -PB" "Default probe (TCP 80, 445 & ICMP)" OFF \
 			" -PS" "Check whether targets are up by probing TCP ports" OFF \
