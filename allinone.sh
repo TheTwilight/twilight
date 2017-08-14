@@ -164,12 +164,13 @@ else
 fi
 
 #Main menu
-OPTION=$(whiptail --title "Main Menu" --menu "Choose your option" 15 80 5 \
+OPTION=$(whiptail --title "Main Menu" --menu "Choose your option" 15 80 6 \
 "1" "Default Config 1: $DCONF_PARAM1" \
 "2" "Default Config 2: $DCONF_PARAM2" \
 "3" "Default Config 3: $DCONF_PARAM3" \
 "4" "Custom Configuration File" \
-"5" "Custom Options" 3>&1 1>&2 2>&3)
+"5" "Custom Options" \
+"6" "Upload scan results" 3>&1 1>&2 2>&3)
 
 #Menu points
 case $OPTION in
@@ -321,6 +322,15 @@ case $OPTION in
 				echo "You closed the script."; exit
 			fi
 		done
+		if [ -z "$IDX" ]; then
+			while test -z "$IDX"; do
+				IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
+			done
+		fi 
 		#Save username & index
 		if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
 			if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
@@ -345,6 +355,72 @@ case $OPTION in
 		fi
 		exit
             ;;
+	#Upload scan results to Elasticshearch
+	"6")
+		SCANRES=$(whiptail --title "Path" --inputbox "Path to scan results archive (.zip)?" 10 80 ./logstr/log_ 3>&1 1>&2 2>&3)
+		while ! test -f "$SCANRES"; do
+			SCANRES=$(whiptail --title "Path" --inputbox "Path to scan results archive (.zip)? Invalid Path!" 10 80 $SCANRES 3>&1 1>&2 2>&3)
+			exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
+			done
+
+		#Inputbox for the Elasticsearch server URL, IP; storing for next use
+		while test -z "$ES_IP"; do
+			ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
+			sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
+		done
+
+		#User login data
+		while test -z "$USR"; do
+			USR=$(whiptail --title "Username - Elasticsearch" --inputbox "Enter your username for Elasticsearch." 10 80 $PREVUSR 3>&1 1>&2 2>&3)
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
+		done
+		while test -z "$PSW"; do
+			PSW=$(whiptail --title "Password - Elasticsearch" --passwordbox "Enter your password for Elasticsearch." 10 80 3>&1 1>&2 2>&3)
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
+		done
+		if [ -z "$IDX" ]; then
+			while test -z "$IDX"; do
+				IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
+			done
+		fi 
+		#Save username & index
+		if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
+			if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
+				sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
+				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+				( PREVIDX=$IDX ) 2>> /dev/null
+				IU=1
+			fi
+		fi
+		if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
+			if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
+				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+			fi
+		fi
+
+		#Unzipping the Scan results to temporary folder and send it to Elasticshearch server.
+		unzip $SCANRES -d ./tmp/
+		python VulntoES.py -i ./tmp/twilight.xml -e "$ES_IP" -r nmap -I "$IDX" -u "$USR" -p "$PSW"
+		rm -r ./tmp
+
+		exit
+	    ;;
+
 	*)
 		echo "You closed the script."; exit
 	    ;;
