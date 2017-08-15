@@ -66,7 +66,7 @@ def main():
 		print("Connection failed")
 		sys.exit()
 	else:
-		print("Connection esatblished")
+		print("Connection established")
 		sys.exit()
 
 if __name__ == "__main__":

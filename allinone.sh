@@ -328,6 +328,20 @@ case $OPTION in
 				echo "You closed the script."; exit
 			fi
 		done
+
+		#Testing if the connection can be establised with Elasticsearch server.
+		LOGTEST=$(python connTest.py -u $USR -e $ES_IP -p $PSW | grep "Connection" | cut -d' ' -f2 )
+		if [ "$LOGTEST" != "established" ]; then
+			if (whiptail --title "Error!" --yes-button "Continue" --no-button "Exit" --yesno "Connection can't be established with Elasticsearch server!" 10 80) then
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
+			else
+				exit
+			fi			
+		fi
+
 		if [ -z "$IDX" ]; then
 			while test -z "$IDX"; do
 				IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
@@ -427,6 +441,20 @@ case $OPTION in
 				echo "You closed the script."; exit
 			fi
 		done
+
+		#Testing if the connection can be establised with Elasticsearch server.
+		LOGTEST=$(python connTest.py -u $USR -e $ES_IP -p $PSW | grep "Connection" | cut -d' ' -f2 )
+		if [ "$LOGTEST" != "established" ]; then
+			if (whiptail --title "Error!" --yes-button "Continue" --no-button "Exit" --yesno "Connection can't be established with Elasticsearch server!" 10 80) then
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
+			else
+				exit
+			fi
+		fi
+
 		if [ -z "$IDX" ]; then
 			while test -z "$IDX"; do
 				IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
@@ -523,6 +551,20 @@ if [ -n "$OPTION" ]; then
 			echo "You closed the script."; exit
 		fi	
 	done
+
+	#Testing if the connection can be establised with Elasticsearch server.
+	LOGTEST=$(python connTest.py -u $USR -e $ES_IP -p $PSW | grep "Connection" | cut -d' ' -f2 )
+	if [ "$LOGTEST" != "established" ]; then
+			if (whiptail --title "Error!" --yes-button "Continue" --no-button "Exit" --yesno "Connection can't be established with Elasticsearch server!" 10 80) then
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
+			else
+				exit
+			fi
+	fi
+
 	if [ -z "$IDX" ]; then
 		while test -z "$IDX"; do
 			IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
