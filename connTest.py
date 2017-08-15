@@ -63,7 +63,8 @@ def main():
 		verify_certs=False)
 	
 	if not es.ping():
-		raise ValueError("Connection failed")
+		print("Connection failed")
+		sys.exit()
 	else:
 		print("Connection esatblished")
 		sys.exit()
