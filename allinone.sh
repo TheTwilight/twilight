@@ -192,6 +192,10 @@ case $OPTION in
 	#Option four: Read the user defined configs, can give custom path
 	"4")
 		SRC=$(whiptail --title "Path" --inputbox "Path to configuration file?" 10 80 ./conf/conf*.cfg 3>&1 1>&2 2>&3)
+		exitstatus=$?
+		if [ $exitstatus != 0 ]; then
+			echo "You closed the script."; exit
+		fi
 		while ! test -f "$SRC"; do
 			SRC=$(whiptail --title "Path" --inputbox "Path to configuration file? Invalid Path!" 10 80 $SRC 3>&1 1>&2 2>&3)
 			exitstatus=$?
@@ -303,6 +307,7 @@ case $OPTION in
 		while test -z "$ES_IP"; do
 			ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
 			sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
+			exitstatus=$?
 			if [ $exitstatus != 0 ]; then
 				echo "You closed the script."; exit
 			fi
@@ -311,6 +316,7 @@ case $OPTION in
 		#User login data
 		while test -z "$USR"; do
 			USR=$(whiptail --title "Username - Elasticsearch" --inputbox "Enter your username for Elasticsearch." 10 80 $PREVUSR 3>&1 1>&2 2>&3)
+			exitstatus=$?
 			if [ $exitstatus != 0 ]; then
 				echo "You closed the script."; exit
 			fi
@@ -334,23 +340,49 @@ case $OPTION in
 		#Save username & index
 		if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
 			if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
 				sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
 				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
 				( PREVIDX=$IDX ) 2>> /dev/null
 				IU=1
+			else
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
 			fi
 		fi
 		if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
 			if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
 				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+			else
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
 			fi
 		fi
 
 		#Summary of the parameters and target URL/IP, option to edit them
 		if (whiptail --title "Start scanning / Edit - (7/7)" --yes-button "Scan" --no-button "Edit"  --yesno "Start scanning or edit parameters? \n Parameters: $PARAMS $URL" 10 80) then
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
 			nmap $PARAMS -oX ./log.xml $URL
 		else  					
 			PARAMS=$(whiptail --title "Edit" --inputbox "Editing: \n $PARAMS" 10 80 " $PARAMS" 3>&1 1>&2 2>&3)
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
 			nmap $PARAMS -oX ./log.xml $URL
 		fi
 		exit
@@ -358,6 +390,10 @@ case $OPTION in
 	#Upload scan results to Elasticshearch
 	"6")
 		SCANRES=$(whiptail --title "Path" --inputbox "Path to scan results archive (.zip)?" 10 80 ./logstr/log_ 3>&1 1>&2 2>&3)
+		exitstatus=$?
+		if [ $exitstatus != 0 ]; then
+			echo "You closed the script."; exit
+		fi
 		while ! test -f "$SCANRES"; do
 			SCANRES=$(whiptail --title "Path" --inputbox "Path to scan results archive (.zip)? Invalid Path!" 10 80 $SCANRES 3>&1 1>&2 2>&3)
 			exitstatus=$?
@@ -369,15 +405,17 @@ case $OPTION in
 		#Inputbox for the Elasticsearch server URL, IP; storing for next use
 		while test -z "$ES_IP"; do
 			ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
-			sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
+			exitstatus=$?
 			if [ $exitstatus != 0 ]; then
 				echo "You closed the script."; exit
 			fi
+			sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
 		done
 
 		#User login data
 		while test -z "$USR"; do
 			USR=$(whiptail --title "Username - Elasticsearch" --inputbox "Enter your username for Elasticsearch." 10 80 $PREVUSR 3>&1 1>&2 2>&3)
+			exitstatus=$?
 			if [ $exitstatus != 0 ]; then
 				echo "You closed the script."; exit
 			fi
@@ -401,15 +439,33 @@ case $OPTION in
 		#Save username & index
 		if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
 			if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
 				sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
 				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
 				( PREVIDX=$IDX ) 2>> /dev/null
 				IU=1
+			else
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
 			fi
 		fi
 		if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
 			if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
 				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+			else
+				exitstatus=$?
+				if [ $exitstatus != 0 ]; then
+					echo "You closed the script."; exit
+				fi
 			fi
 		fi
 
@@ -429,26 +485,27 @@ esac
 if [ -n "$OPTION" ]; then
 	#Inputbox for the target URL, IP
 	CONF_URL=$(whiptail --title "URL / IP Address" --inputbox "Enter the URl or IP address of the target." 10 80 "$CONF_URL" 3>&1 1>&2 2>&3)
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then
-		echo "You closed the script."; exit
-	fi
+		exitstatus=$?
+		if [ $exitstatus != 0 ]; then
+			echo "You closed the script."; exit
+		fi
 	#Reenter the address if target was empty
 	while test -z "$CONF_URL"; do
-	CONF_URL=$(whiptail --title "URL / IP Address" --inputbox "ENTER the URl or IP address of the target!" 10 80 "$CONF_URL" 3>&1 1>&2 2>&3)
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then
-		echo "You closed the script."; exit
-	fi
+		CONF_URL=$(whiptail --title "URL / IP Address" --inputbox "ENTER the URl or IP address of the target!" 10 80 "$CONF_URL" 3>&1 1>&2 2>&3)
+		exitstatus=$?
+		if [ $exitstatus != 0 ]; then
+			echo "You closed the script."; exit
+		fi
 	done
 
 	#Inputbox for the Elasticsearch server URL, IP
 	while test -z "$ES_IP"; do
 		ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Please enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
-		sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
+		exitstatus=$?
 		if [ $exitstatus != 0 ]; then
 			echo "You closed the script."; exit
 		fi
+		sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
 	done
 
 	#User login data & index (if not provided at the beggining)
@@ -479,23 +536,45 @@ if [ -n "$OPTION" ]; then
 	#Save username & index
 	if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
 		if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
 			sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
 			sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
 			( PREVIDX=$IDX ) 2>> /dev/null
 			IU=1
+		else
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
 		fi
 	fi
 	if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
 		if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
 			sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+		else
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
 		fi
 	fi
 
 	#Summary of the parameters and target URL/IP, option to edit them
-	if (whiptail --title "Start scanning / Edit" --yes-button "Scan" --no-button "Edit"  --yesno "Start scanning or edit parameters? \n Parameters: $CONF_PARAM $CONF_URL" 10 80) then
+	if (whiptail --title "Start scanning / Edit" --yes-button "Scan" --no-button "Edit"  --yesno "Start scanning or edit parameters? \n Parameters: $CONF_PARAM $CONF_URL" 10 80) then		
 			nmap $CONF_PARAM -oX ./log.xml $CONF_URL
 		else  					
 			CONF_PARAM=$(whiptail --title "Edit" --inputbox "Editing: \n $CONF_PARAM" 10 80 " $CONF_PARAM" 3>&1 1>&2 2>&3)
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+				echo "You closed the script."; exit
+			fi
 			nmap $CONF_PARAM -oX ./log.xml $CONF_URL
 		fi
 fi
