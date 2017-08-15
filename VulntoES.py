@@ -239,12 +239,12 @@ def main():
 	  	report_type = p
 	  elif o in ['-e', '--es_ip=']:
 	  	es_ip=p
-	  elif o in ['-u', '--es_ip=']:
+	  elif o in ['-u', '--username=']:
 	  	username=p
 	  	if not username:
 			print "Please specify a username after -u "
 			sys.exit()
-	  elif o in ['-p', '--es_ip=']:
+	  elif o in ['-p', '--password=']:
 	  	password=p
 	  	if not password:
 			print "Please specify a password after -p "
