@@ -33,7 +33,6 @@ def main():
 	password = ''
 	es_ip=''
         static_fields = dict()
-	print(opts)
 	for o,p in opts:
 		if o in ['-u', '--username=']:
 			username=p
