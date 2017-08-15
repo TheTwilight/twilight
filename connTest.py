@@ -19,9 +19,10 @@
 from elasticsearch import Elasticsearch
 import getopt
 import sys
+import urllib3
 
 def main():
-	
+	urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 	letters = 'e:u:p:h' #username, password
 	keywords = ['username=', 'password=']
 	try:
@@ -63,6 +64,9 @@ def main():
 	
 	if not es.ping():
 		raise ValueError("Connection failed")
+	else:
+		print("Connection esatblished")
+		sys.exit()
 
 if __name__ == "__main__":
 	main()
