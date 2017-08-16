@@ -136,6 +136,126 @@ netstat -a >> ./hwinfo.txt
 #Let's see those changes.
 #
 
+#Quit fuction
+function quit {
+	if [ $1 != 0 ]; then
+	echo "You closed the script."; exit
+	fi
+}
+
+#Sending the results to ES server.
+function send {
+	python txttoxml.py --inputtxt hwinfo.txt --inputxml log.xml --output twilight.xml
+	now=$(date '+%F_%R:%S')
+	mkdir -p ./logstr/
+	zip -q -T ./logstr/log_$now.zip kibana_json.txt hwinfo.txt log.xml twilight.xml
+	python VulntoES.py -i twilight.xml -e "$ES_IP" -r nmap -I "$IDX" -u "$USR" -p "$PSW"
+}
+
+#Inputbox for the target URL, IP
+function targeturl_box {
+	while test -z "$URL"; do
+	URL=$(whiptail --title "URL / IP - (6/7)" --inputbox "Enter URL or IP address of target." 10 80 scanme.nmap.org 3>&1 1>&2 2>&3)
+	quit $?		
+	done
+}
+
+#Inputbox for the configuration target URL, IP
+function targetconfurl_box {
+	CONF_URL=$(whiptail --title "URL / IP Address" --inputbox "Enter the URl or IP address of the target." 10 80 "$CONF_URL" 3>&1 1>&2 2>&3)
+		quit $?
+	#Reenter the address if target was empty
+	while test -z "$CONF_URL"; do
+		CONF_URL=$(whiptail --title "URL / IP Address" --inputbox "ENTER the URl or IP address of the target!" 10 80 "$CONF_URL" 3>&1 1>&2 2>&3)
+		quit $?
+	done
+}
+
+#Inputbox for the Elasticsearch server URL, IP; storing for next use
+function es_ip_box {
+	while test -z "$ES_IP"; do
+		ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
+		quit $?
+		sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
+	done
+}
+
+#User login data
+function login_box {
+	while test -z "$USR"; do
+		USR=$(whiptail --title "Username - Elasticsearch" --inputbox "Enter your username for Elasticsearch." 10 80 $PREVUSR 3>&1 1>&2 2>&3)
+		quit $?
+	done
+	while test -z "$PSW"; do
+		PSW=$(whiptail --title "Password - Elasticsearch" --passwordbox "Enter your password for Elasticsearch." 10 80 3>&1 1>&2 2>&3)
+		quit $?
+	done
+}
+
+#Testing if the connection can be establised with Elasticsearch server.
+function logintester {
+	LOGTEST=$(python connTest.py -u $USR -e $ES_IP -p $PSW | grep "Connection" | cut -d' ' -f2 )
+	if [ "$LOGTEST" != "established" ]; then
+		if (whiptail --title "Error!" --yes-button "Continue" --no-button "Exit" --yesno "Connection can't be established with Elasticsearch server!" 10 80) then
+			quit $?
+		else
+			exit
+		fi			
+	fi
+}
+
+#ES index iputbox
+function idx_box {
+	if [ -z "$IDX" ]; then
+		while test -z "$IDX"; do
+			IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
+			quit $?
+		done
+	fi
+}
+
+#Save username & index
+function login_idx_str {
+	if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
+		IU=1
+		if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
+			quit $?
+			sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
+			sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+			( PREVIDX=$IDX ) 2>> /dev/null
+		fi
+	fi
+	if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
+		if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
+			quit $?
+			sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
+		fi
+	fi
+}
+
+#Summary of the parameters and target URL/IP, option to edit them
+function summary {
+	if (whiptail --title "Start scanning / Edit - (7/7)" --yes-button "Scan" --no-button "Edit"  --yesno "Start scanning or edit parameters? \n Parameters: $PARAMS $URL" 10 80) then
+		quit $?
+		nmap $PARAMS -oX ./log.xml $URL
+	else  					
+		PARAMS=$(whiptail --title "Edit" --inputbox "Editing: \n $PARAMS" 10 80 " $PARAMS" 3>&1 1>&2 2>&3)
+		quit $?
+		nmap $PARAMS -oX ./log.xml $URL
+	fi
+}
+
+#Summary of the parameters and target URL/IP, option to edit them
+function confsummary {
+	if (whiptail --title "Start scanning / Edit" --yes-button "Scan" --no-button "Edit"  --yesno "Start scanning or edit parameters? \n Parameters: $CONF_PARAM $CONF_URL" 10 80) then		
+		nmap $CONF_PARAM -oX ./log.xml $CONF_URL
+		quit $?
+	else  					
+		CONF_PARAM=$(whiptail --title "Edit" --inputbox "Editing: \n $CONF_PARAM" 10 80 " $CONF_PARAM" 3>&1 1>&2 2>&3)
+		quit $?
+		nmap $CONF_PARAM -oX ./log.xml $CONF_URL
+	fi
+}
 
 #Configuration file reading
 source ./conf/dconfs.cfg
@@ -172,36 +292,47 @@ OPTION=$(whiptail --title "Main Menu" --menu "Choose your option" 15 80 6 \
 "5" "Custom Options" \
 "6" "Upload scan results" 3>&1 1>&2 2>&3)
 
+function conffuctions {
+	targetconfurl_box
+	es_ip_box
+	login_box
+	logintester
+	idx_box
+	login_idx_str
+	confsummary
+	send
+}
+
 #Menu points
 case $OPTION in
 	#Option one: Read the first default configs
         "1")
 		CONF_PARAM=$DCONF_PARAM1
 		CONF_URL=$DCONF_URL1
+		conffuctions
+		exit
             ;;
 	#Option two: Read the second default configs
         "2")
 		CONF_PARAM=$DCONF_PARAM2
 		CONF_URL=$DCONF_URL2
+		conffuctions
+		exit
             ;;
 	#Option three: Read the third default configs
         "3")
 		CONF_PARAM=$DCONF_PARAM3
 		CONF_URL=$DCONF_URL3
+		conffuctions
+		exit
             ;;
 	#Option four: Read the user defined configs, can give custom path
 	"4")
 		SRC=$(whiptail --title "Path" --inputbox "Path to configuration file?" 10 80 ./conf/conf*.cfg 3>&1 1>&2 2>&3)
-		exitstatus=$?
-		if [ $exitstatus != 0 ]; then
-			echo "You closed the script."; exit
-		fi
+		quit $?
 		while ! test -f "$SRC"; do
 			SRC=$(whiptail --title "Path" --inputbox "Path to configuration file? Invalid Path!" 10 80 $SRC 3>&1 1>&2 2>&3)
-			exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
+			quit $?
 			done
 		source $SRC
 		($CCONF_PARAM >&2) 2>> /dev/null
@@ -220,20 +351,14 @@ case $OPTION in
 			" -T3" "Normal" ON \
 			" -T4" "Aggressive" OFF \
 			" -T5" "Insane" OFF 3>&1 1>&2 2>&3)
-			exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
+			quit $?
 
 		#Port options 1
 		PORTS1=$(whiptail --title "Ports - 1. - (2/7)" --checklist \
 			"Choose what ports to scan - 1st Page" 15 80 6 \
 			" -F" "Scan 100 most popular ports" OFF \
 			" -r" "Scan linearly (do not randomize ports)" OFF 3>&1 1>&2 2>&3)
-			exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
+			quit $?
  
 		#Port options 2, only accessible if "-F" parameter wasn't picked 
 		if [[ $PORTS1 != *"-F"* ]]; then
@@ -242,10 +367,7 @@ case $OPTION in
 			" -p<port1>-<port2>" "Port range" OFF \
 			" -p<port1>,<port2>,..." "Port List" OFF \
 			" --top-ports <n>" "Scan n most popular ports" OFF 3>&1 1>&2 2>&3)
-			exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
+			quit $?
 		fi
  
 		#Inputbox for port 2 ontions, only accessible if a port 2 option was picked
@@ -253,10 +375,7 @@ case $OPTION in
 			while test -z "$PX"; do
 			HELP1=$(echo $PORTS2 | sed 's/--top-ports //g' | sed 's/-p//g')
 			PX=$(whiptail --title "Port(s) - (3.1/7)" --inputbox "Write the port(s) what you want to scan. $HELP1" 10 80 3>&1 1>&2 2>&3)
-			exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
+			quit $?
 			done
 			PORTS2=$(echo $PORTS2 | sed 's/<port1>-<port2>//g' | sed 's/<port1>,<port2>,...//g' | sed 's/<n>//g')			
 			PORTS2=$(echo "$PORTS2$PX")
@@ -271,10 +390,7 @@ case $OPTION in
 			" -PE" "Use ICMP Echo Request" OFF \
 			" -PM" "Use ICMP Timestamp Request" OFF \
 			" -PP" "Use ICMP Netmask Request" OFF 3>&1 1>&2 2>&3)
-			exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
+			quit $?
 
 		#Scan type options
 		SCTYP=$(whiptail --title "Scan Types - (5/7)" --checklist \
@@ -285,223 +401,54 @@ case $OPTION in
 			" -sU" "UDP Scan" OFF \
 			" -sV" "Version Scan" OFF \
 			" -O" "OS Detection" OFF 3>&1 1>&2 2>&3)
-			exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-
-		#Inputbox for the target URL, IP
-		while test -z "$URL"; do
-		URL=$(whiptail --title "URL / IP - (6/7)" --inputbox "Enter URL or IP address of target." 10 80 scanme.nmap.org 3>&1 1>&2 2>&3)
-		exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi		
-		done
+			quit $?
 
 		#Merging the parameters
 		PARAMS="$TIMING $PORTS1 $PORTS2 $PROB $SCTYP"
 		PARAMS=$(echo $PARAMS | sed 's/"//g')
 
-		#Inputbox for the Elasticsearch server URL, IP; storing for next use
-		while test -z "$ES_IP"; do
-			ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
-			sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-		done
+		targeturl_box
 
-		#User login data
-		while test -z "$USR"; do
-			USR=$(whiptail --title "Username - Elasticsearch" --inputbox "Enter your username for Elasticsearch." 10 80 $PREVUSR 3>&1 1>&2 2>&3)
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-		done
-		while test -z "$PSW"; do
-			PSW=$(whiptail --title "Password - Elasticsearch" --passwordbox "Enter your password for Elasticsearch." 10 80 3>&1 1>&2 2>&3)
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-		done
+		es_ip_box
 
-		#Testing if the connection can be establised with Elasticsearch server.
-		LOGTEST=$(python connTest.py -u $USR -e $ES_IP -p $PSW | grep "Connection" | cut -d' ' -f2 )
-		if [ "$LOGTEST" != "established" ]; then
-			if (whiptail --title "Error!" --yes-button "Continue" --no-button "Exit" --yesno "Connection can't be established with Elasticsearch server!" 10 80) then
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-			else
-				exit
-			fi			
-		fi
+		login_box
 
-		if [ -z "$IDX" ]; then
-			while test -z "$IDX"; do
-				IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-			done
-		fi 
-		#Save username & index
-		if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
-			if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-				sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
-				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
-				( PREVIDX=$IDX ) 2>> /dev/null
-				IU=1
-			else
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-			fi
-		fi
-		if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
-			if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
-			else
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-			fi
-		fi
+		logintester
 
-		#Summary of the parameters and target URL/IP, option to edit them
-		if (whiptail --title "Start scanning / Edit - (7/7)" --yes-button "Scan" --no-button "Edit"  --yesno "Start scanning or edit parameters? \n Parameters: $PARAMS $URL" 10 80) then
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-			nmap $PARAMS -oX ./log.xml $URL
-		else  					
-			PARAMS=$(whiptail --title "Edit" --inputbox "Editing: \n $PARAMS" 10 80 " $PARAMS" 3>&1 1>&2 2>&3)
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-			nmap $PARAMS -oX ./log.xml $URL
-		fi
+		idx_box
+
+		login_idx_str
+
+		summary
+
+		send
 		exit
             ;;
 	#Upload scan results to Elasticshearch
 	"6")
 		SCANRES=$(whiptail --title "Path" --inputbox "Path to scan results archive (.zip)?" 10 80 ./logstr/log_ 3>&1 1>&2 2>&3)
-		exitstatus=$?
-		if [ $exitstatus != 0 ]; then
-			echo "You closed the script."; exit
-		fi
+		quit $?
 		while ! test -f "$SCANRES"; do
 			SCANRES=$(whiptail --title "Path" --inputbox "Path to scan results archive (.zip)? Invalid Path!" 10 80 $SCANRES 3>&1 1>&2 2>&3)
-			exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
+			quit $?
 			done
 
-		#Inputbox for the Elasticsearch server URL, IP; storing for next use
-		while test -z "$ES_IP"; do
-			ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-			sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
-		done
+		es_ip_box
 
-		#User login data
-		while test -z "$USR"; do
-			USR=$(whiptail --title "Username - Elasticsearch" --inputbox "Enter your username for Elasticsearch." 10 80 $PREVUSR 3>&1 1>&2 2>&3)
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-		done
-		while test -z "$PSW"; do
-			PSW=$(whiptail --title "Password - Elasticsearch" --passwordbox "Enter your password for Elasticsearch." 10 80 3>&1 1>&2 2>&3)
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-		done
+		login_box
 
-		#Testing if the connection can be establised with Elasticsearch server.
-		LOGTEST=$(python connTest.py -u $USR -e $ES_IP -p $PSW | grep "Connection" | cut -d' ' -f2 )
-		if [ "$LOGTEST" != "established" ]; then
-			if (whiptail --title "Error!" --yes-button "Continue" --no-button "Exit" --yesno "Connection can't be established with Elasticsearch server!" 10 80) then
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-			else
-				exit
-			fi
-		fi
+		logintester
 
-		if [ -z "$IDX" ]; then
-			while test -z "$IDX"; do
-				IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-			done
-		fi 
-		#Save username & index
-		if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
-			if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-				sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
-				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
-				( PREVIDX=$IDX ) 2>> /dev/null
-				IU=1
-			else
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-			fi
-		fi
-		if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
-			if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-				sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
-			else
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-			fi
-		fi
+		idx_box
+
+		login_idx_str
 
 		#Unzipping the Scan results to temporary folder and send it to Elasticshearch server.
 		unzip $SCANRES -d ./tmp/
 		python VulntoES.py -i ./tmp/twilight.xml -e "$ES_IP" -r nmap -I "$IDX" -u "$USR" -p "$PSW"
 		rm -r ./tmp
 
+		send
 		exit
 	    ;;
 
@@ -509,122 +456,3 @@ case $OPTION in
 		echo "You closed the script."; exit
 	    ;;
 esac
-
-if [ -n "$OPTION" ]; then
-	#Inputbox for the target URL, IP
-	CONF_URL=$(whiptail --title "URL / IP Address" --inputbox "Enter the URl or IP address of the target." 10 80 "$CONF_URL" 3>&1 1>&2 2>&3)
-		exitstatus=$?
-		if [ $exitstatus != 0 ]; then
-			echo "You closed the script."; exit
-		fi
-	#Reenter the address if target was empty
-	while test -z "$CONF_URL"; do
-		CONF_URL=$(whiptail --title "URL / IP Address" --inputbox "ENTER the URl or IP address of the target!" 10 80 "$CONF_URL" 3>&1 1>&2 2>&3)
-		exitstatus=$?
-		if [ $exitstatus != 0 ]; then
-			echo "You closed the script."; exit
-		fi
-	done
-
-	#Inputbox for the Elasticsearch server URL, IP
-	while test -z "$ES_IP"; do
-		ES_IP=$(whiptail --title "Elasticsearch IP" --inputbox "Please enter the IP address of the Elasticsearch server." 10 80 $PREVES_IP 3>&1 1>&2 2>&3)
-		exitstatus=$?
-		if [ $exitstatus != 0 ]; then
-			echo "You closed the script."; exit
-		fi
-		sed -i -e "s/PREVES_IP=.*/PREVES_IP=$ES_IP/g" ./prev
-	done
-
-	#User login data & index (if not provided at the beggining)
-	while test -z "$USR"; do
-		USR=$(whiptail --title "Username - Elasticsearch" --inputbox "Enter your username for Elasticsearch." 10 80 $PREVUSR 3>&1 1>&2 2>&3)
-		exitstatus=$?
-		if [ $exitstatus != 0 ]; then
-			echo "You closed the script."; exit
-		fi
-	done
-	while test -z "$PSW"; do
-		PSW=$(whiptail --title "Password - Elasticsearch" --passwordbox "Enter your password for Elasticsearch." 10 80 3>&1 1>&2 2>&3)
-		exitstatus=$?
-		if [ $exitstatus != 0 ]; then
-			echo "You closed the script."; exit
-		fi	
-	done
-
-	#Testing if the connection can be establised with Elasticsearch server.
-	LOGTEST=$(python connTest.py -u $USR -e $ES_IP -p $PSW | grep "Connection" | cut -d' ' -f2 )
-	if [ "$LOGTEST" != "established" ]; then
-			if (whiptail --title "Error!" --yes-button "Continue" --no-button "Exit" --yesno "Connection can't be established with Elasticsearch server!" 10 80) then
-				exitstatus=$?
-				if [ $exitstatus != 0 ]; then
-					echo "You closed the script."; exit
-				fi
-			else
-				exit
-			fi
-	fi
-
-	if [ -z "$IDX" ]; then
-		while test -z "$IDX"; do
-			IDX=$(whiptail --title "Index - Elasticsearch" --inputbox "Enter the index name for Elasticsearch." 10 80 $PREVIDX 3>&1 1>&2 2>&3)
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-		done
-	fi 
-
-	#Save username & index
-	if [ -z "$USR" ] || [ "$USR" != "$PREVUSR" ]; then
-		if (whiptail --title "Save Username & Index" --yesno "Do you want to save your username and index?" 10 60) then
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-			sed -i -e "s/PREVUSR=.*/PREVUSR=$USR/g" ./prev
-			sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
-			( PREVIDX=$IDX ) 2>> /dev/null
-			IU=1
-		else
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-		fi
-	fi
-	if [ "$IDX" != "$PREVIDX" ] && [ "$IU" == "0" ]; then
-		if (whiptail --title "Save Index" --yesno "Do you want to save your index?" 10 60) then
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-			sed -i -e "s/PREVIDX=.*/PREVIDX=$IDX/g" ./prev
-		else
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-		fi
-	fi
-
-	#Summary of the parameters and target URL/IP, option to edit them
-	if (whiptail --title "Start scanning / Edit" --yes-button "Scan" --no-button "Edit"  --yesno "Start scanning or edit parameters? \n Parameters: $CONF_PARAM $CONF_URL" 10 80) then		
-			nmap $CONF_PARAM -oX ./log.xml $CONF_URL
-		else  					
-			CONF_PARAM=$(whiptail --title "Edit" --inputbox "Editing: \n $CONF_PARAM" 10 80 " $CONF_PARAM" 3>&1 1>&2 2>&3)
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-				echo "You closed the script."; exit
-			fi
-			nmap $CONF_PARAM -oX ./log.xml $CONF_URL
-		fi
-fi
-
-#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-python txttoxml.py --inputtxt hwinfo.txt --inputxml log.xml --output twilight.xml
-now=$(date '+%F_%R:%S')
-mkdir -p ./logstr/
-zip -q -T ./logstr/log_$now.zip kibana_json.txt hwinfo.txt log.xml twilight.xml
-python VulntoES.py -i twilight.xml -e "$ES_IP" -r nmap -I "$IDX" -u "$USR" -p "$PSW"
